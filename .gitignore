@@ -1,0 +1,8 @@
+# Secrets and local n8n data (holds the encryption key and stored credentials)
+.env
+.env.*
+.n8n/
+*.sqlite
+
+# Unsanitised exports: clean them before moving into workflows/
+exports-raw/
