@@ -40,7 +40,7 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ ['payment_intent.succeeded','payment_intent.payment_failed','charge.dispute.created'].includes($json.event_type) }}",
+              "leftValue": "={{ ['payment_intent.succeeded','payment_intent.payment_failed'].includes($json.event_type) }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
