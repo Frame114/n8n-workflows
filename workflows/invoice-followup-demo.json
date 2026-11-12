@@ -1,0 +1,81 @@
+{
+  "name": "Invoice Payment Follow-up Triage (Demo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio/invoice-followup",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "demo31",
+      "name": "Receive request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "demo3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const x=$json.body??$json; const due=String(x.due_date??''); const today=String(x.as_of_date??new Date().toISOString().slice(0,10)); const amount=Number(x.balance_due); const validDate=/^\\d{4}-\\d{2}-\\d{2}$/.test(due)&&/^\\d{4}-\\d{2}-\\d{2}$/.test(today); const days=validDate?Math.floor((Date.parse(today+'T00:00:00Z')-Date.parse(due+'T00:00:00Z'))/86400000):null; let action='manual_data_review'; if(String(x.status??'').toLowerCase()==='paid'||amount===0)action='close_as_paid'; else if(validDate&&Number.isFinite(amount)&&amount>0)action=days>30?'escalation_review':days>0?'payment_reminder_draft':days===0?'due_today_notice_draft':'no_reminder'; return [{json:{invoice_reference:String(x.invoice_reference??''),balance_due:Number.isFinite(amount)?amount:null,due_date:due,days_overdue:days,recommended_action:action,send_automatically:false,human_review_required:true,note:'Check disputes, credits and payment allocations before contacting a customer.'}}];"
+      },
+      "id": "demo32",
+      "name": "Process and validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "demo33",
+      "name": "Return review payload",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Receive request": {
+      "main": [
+        [
+          {
+            "node": "Process and validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process and validate": {
+      "main": [
+        [
+          {
+            "node": "Return review payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/London"
+  },
+  "active": false
+}
