@@ -172,11 +172,30 @@
     },
     {
       "parameters": {
-        "jsCode": "const d=$('Validate and Parse Drafts').first().json; const approved=$env.ALLOW_DEMO_AUTOPUBLISH==='true'&&String($env.CONTENT_APPROVAL_TOKEN??'')!==''&&String($json.approval_token??'')===String($env.CONTENT_APPROVAL_TOKEN); return [{json:{...d,approved,gate:'explicit_approval_token_required'}}];"
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $env.ALLOW_DEMO_AUTOPUBLISH === 'true' && !!$env.CONTENT_APPROVAL_TOKEN && String($('Webhook — Approved Job Summary').first().json.body?.approval_token ?? '') === String($env.CONTENT_APPROVAL_TOKEN) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
       "id": "adv4_8",
       "name": "Approval Token Check",
-      "type": "n8n-nodes-base.code",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
         1760,
@@ -219,7 +238,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ {ok:true,status:'draft_saved_for_approval',publish_api_configured:!!$env.BUFFER_API_URL} }}",
+        "responseBody": "={{ {ok:true,status:'saved_for_approval_or_not_published',note:'No Buffer API call is made unless the explicit approval token gate passes.'} }}",
         "options": {
           "responseCode": 200
         }
@@ -324,6 +343,13 @@
         [
           {
             "node": "Buffer — Create Scheduled Update",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond — Draft Status",
             "type": "main",
             "index": 0
           }
