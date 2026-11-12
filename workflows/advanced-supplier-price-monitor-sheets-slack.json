@@ -1,0 +1,353 @@
+{
+  "name": "Advanced Supplier Price Monitor — Supplier API + Google Sheets + Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1
+            }
+          ]
+        },
+        "timezone": "Europe/London"
+      },
+      "id": "adv3_1",
+      "name": "Schedule — Daily Price Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPPLIER_API_URL }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.SUPPLIER_API_TOKEN}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adv3_2",
+      "name": "Supplier API — Fetch Catalogue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=Array.isArray($json.products)?$json.products:[]; return rows.map(p=>({json:{sku:String(p.sku??p.product_code??'').trim(),name:String(p.name??p.description??'').trim(),unit:String(p.unit??'').trim(),price:Number(p.trade_price??p.price),currency:String(p.currency??'GBP'),checked_at:new Date().toISOString(),valid:!!(p.sku??p.product_code)&&Number.isFinite(Number(p.trade_price??p.price))&&Number(p.trade_price??p.price)>=0}}));"
+      },
+      "id": "adv3_3",
+      "name": "Normalise Supplier Products",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "adv3_4",
+      "name": "Valid Product Row?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{$env.GOOGLE_SHEET_ID}}/values/SupplierBaseline!A:D",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.GOOGLE_ACCESS_TOKEN}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adv3_5",
+      "name": "Google Sheets — Read Baseline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const current=$('Normalise Supplier Products').all().map(i=>i.json); const rows=$json.values??[]; const old=new Map(rows.slice(1).map(r=>[String(r[0]),Number(r[2])])); const changes=current.map(p=>{const prior=old.get(p.sku);const delta=Number.isFinite(prior)?p.price-prior:null;return {...p,previous_price:prior??null,delta,change_pct:prior>0&&delta!==null?delta/prior*100:null,changed:delta!==null&&Math.abs(delta)>0.0001};}); return [{json:{products:changes,changed:changes.filter(p=>p.changed),invalid_count:current.filter(p=>!p.valid).length}}];"
+      },
+      "id": "adv3_6",
+      "name": "Compare Price Baseline",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.changed.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "adv3_7",
+      "name": "Meaningful Change?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_SUPPLIER_WEBHOOK_URL }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({text:'Supplier price changes detected: '+$json.changed.slice(0,20).map(p=>p.sku+' '+p.previous_price+' → '+p.price+' '+p.currency).join('; ')}) }}",
+        "options": {}
+      },
+      "id": "adv3_8",
+      "name": "Slack — Price Change Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{$env.GOOGLE_SHEET_ID}}/values/PriceHistory!A:F:append?valueInputOption=USER_ENTERED",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.GOOGLE_ACCESS_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({values:$('Compare Price Baseline').first().json.products.map(p=>[p.checked_at,p.sku,p.name,p.unit,p.price,p.currency])}) }}",
+        "options": {}
+      },
+      "id": "adv3_9",
+      "name": "Google Sheets — Append Price Snapshot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const r=$('Compare Price Baseline').first().json; return [{json:{checked:r.products.length,changed:r.changed.length,invalid:r.invalid_count,snapshot_logged:true,review_required:true,note:'Confirm product specification, pack size, VAT basis, availability, delivery and supplier permissions before changing customer estimates.'}}];"
+      },
+      "id": "adv3_10",
+      "name": "Finish Price Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule — Daily Price Check": {
+      "main": [
+        [
+          {
+            "node": "Supplier API — Fetch Catalogue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supplier API — Fetch Catalogue": {
+      "main": [
+        [
+          {
+            "node": "Normalise Supplier Products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise Supplier Products": {
+      "main": [
+        [
+          {
+            "node": "Valid Product Row?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid Product Row?": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets — Read Baseline",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finish Price Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets — Read Baseline": {
+      "main": [
+        [
+          {
+            "node": "Compare Price Baseline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare Price Baseline": {
+      "main": [
+        [
+          {
+            "node": "Meaningful Change?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meaningful Change?": {
+      "main": [
+        [
+          {
+            "node": "Slack — Price Change Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finish Price Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack — Price Change Alert": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets — Append Price Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/London"
+  },
+  "active": false
+}
