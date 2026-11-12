@@ -15,3 +15,15 @@ A short index for reviewers and maintainers.
 - Webhook workflows are inactive by default.
 - The demos return drafts/review payloads; they do not send messages, calculate authoritative prices, create quotes or publish content.
 - Add authentication, rate limiting, idempotency, observability and error workflows before production deployment.
+
+
+| `customer-feedback-review-demo.json` | Webhook | Consent-aware review request eligibility | None | Demo export; import/runtime verification pending |
+| `appointment-request-demo.json` | Webhook | Validate appointment requests without claiming a slot is booked | None | Demo export; import/runtime verification pending |
+| `invoice-followup-demo.json` | Webhook | Invoice ageing and payment follow-up triage | None | Demo export; import/runtime verification pending |
+| `supplier-price-normalise-demo.json` | Webhook | Validate supplier price rows and duplicate SKUs | None | Demo export; import/runtime verification pending |
+| `support-ticket-triage-demo.json` | Webhook | Categorise and prioritise support requests | None | Demo export; import/runtime verification pending |
+| `order-status-update-demo.json` | Webhook | Draft customer updates from approved job status | None | Demo export; import/runtime verification pending |
+
+## Portfolio count
+
+Ten workflow examples are now catalogued: one LinkedIn/Telegram workflow and nine webhook-based demonstrations. All six additions are inactive, use synthetic inputs, require no external credentials and do not send customer messages or update live business systems.
