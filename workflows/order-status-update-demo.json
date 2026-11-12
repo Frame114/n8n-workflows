@@ -1,0 +1,81 @@
+{
+  "name": "Order Status Customer Update Draft (Demo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio/order-status-update",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "demo61",
+      "name": "Receive request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "demo6"
+    },
+    {
+      "parameters": {
+        "jsCode": "const x=$json.body??$json;const status=String(x.status??'').toLowerCase();const labels={received:'Your request has been received.',scheduled:'Your work has been scheduled.',in_progress:'Work is currently in progress.',delayed:'There has been a delay to the planned work.',completed:'The work has been marked as completed.',cancelled:'The work has been cancelled.'};const valid=Object.prototype.hasOwnProperty.call(labels,status);const name=String(x.customer_name??'').trim()||'there';const detail=String(x.approved_update??'').trim();const message=valid?'Hello '+name+',\\n\\n'+labels[status]+(detail?' '+detail:'')+'\\n\\nReference: '+String(x.reference??''):'Invalid status; no message drafted.';return [{json:{valid_status:valid,job_status:status,message_draft:valid?message:null,send_automatically:false,customer_notification_approved:false,human_review_required:true}}];"
+      },
+      "id": "demo62",
+      "name": "Process and validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "demo63",
+      "name": "Return review payload",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Receive request": {
+      "main": [
+        [
+          {
+            "node": "Process and validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process and validate": {
+      "main": [
+        [
+          {
+            "node": "Return review payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/London"
+  },
+  "active": false
+}
