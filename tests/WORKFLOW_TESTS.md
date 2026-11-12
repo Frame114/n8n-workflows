@@ -90,3 +90,82 @@ The repository README records code-level sample checks for daily message generat
 ## Evidence record
 
 Record for each test: date, n8n version, workflow name, test ID, input fixture, expected result, actual result, pass/fail, execution ID (if safe to share), and tester. Do not claim a test passed without an observed result.
+
+
+## 5. Customer Feedback and Review Eligibility
+
+Workflow: `customer-feedback-review-demo.json`
+
+| ID | Scenario | Expected result |
+|---|---|---|
+| FB-01 | Completed job, explicit consent, valid email and rating 1–5 | eligible=true |
+| FB-02 | Job not completed | Not eligible |
+| FB-03 | Consent absent or false | Not eligible |
+| FB-04 | Invalid email | Not eligible |
+| FB-05 | Rating outside 1–5 or not an integer | Not eligible |
+| FB-06 | Eligible request | Human review required; no message sent |
+
+## 6. Appointment Request Validation
+
+Workflow: `appointment-request-demo.json`
+
+| ID | Scenario | Expected result |
+|---|---|---|
+| AP-01 | Name, email, YYYY-MM-DD date, HH:MM time and postcode supplied | valid=true |
+| AP-02 | Missing name or postcode | Corresponding validation issue |
+| AP-03 | Invalid email | valid=false |
+| AP-04 | Invalid date format | Date validation issue |
+| AP-05 | Invalid time such as 25:99 | Time validation issue |
+| AP-06 | Valid request | Status remains request_only_not_booked; no confirmation sent |
+
+## 7. Invoice Payment Follow-up Triage
+
+Workflow: `invoice-followup-demo.json`
+
+| ID | Scenario | Expected result |
+|---|---|---|
+| IN-01 | Invoice marked paid | close_as_paid |
+| IN-02 | Zero balance | close_as_paid |
+| IN-03 | Due today | due_today_notice_draft |
+| IN-04 | One day overdue | payment_reminder_draft |
+| IN-05 | More than 30 days overdue | escalation_review |
+| IN-06 | Invalid date or amount | manual_data_review |
+| IN-07 | Any overdue invoice | No message is automatically sent |
+
+## 8. Supplier Price List Normalisation
+
+Workflow: `supplier-price-normalise-demo.json`
+
+| ID | Scenario | Expected result |
+|---|---|---|
+| SP-01 | Valid SKU, description, unit and non-negative price | Row accepted |
+| SP-02 | Missing SKU | Row rejected |
+| SP-03 | Missing description or unit | Row rejected |
+| SP-04 | Negative or non-numeric price | Row rejected |
+| SP-05 | Duplicate SKU in same import | All matching rows flagged |
+| SP-06 | Valid rows | Still require human review before live price-book import |
+
+## 9. Customer Support Ticket Triage
+
+Workflow: `support-ticket-triage-demo.json`
+
+| ID | Scenario | Expected result |
+|---|---|---|
+| ST-01 | Message mentions invoice/payment | billing category |
+| ST-02 | Message mentions login/password | account_access category |
+| ST-03 | Message mentions bug/error | technical_issue category |
+| ST-04 | Message mentions data breach/account hacked | critical security_incident |
+| ST-05 | Message says service down/urgent | high priority |
+| ST-06 | Any ticket | No reply is automatically sent |
+
+## 10. Order Status Customer Update Draft
+
+Workflow: `order-status-update-demo.json`
+
+| ID | Scenario | Expected result |
+|---|---|---|
+| OS-01 | Status received/scheduled/in_progress/completed | Matching draft text |
+| OS-02 | Status delayed | Delay draft plus warning to confirm revised dates |
+| OS-03 | Status cancelled | Cancellation draft |
+| OS-04 | Unknown status | No message draft |
+| OS-05 | Any valid status | No message automatically sent; human approval required |
