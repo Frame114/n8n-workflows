@@ -1,0 +1,323 @@
+{
+  "name": "Advanced Lead Intake — HubSpot + Slack + Google Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio/advanced-lead-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "adv1_1",
+      "name": "Webhook — New Lead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const x=$json.body??$json; const email=String(x.email??'').trim().toLowerCase(); const issues=[]; if(!String(x.name??'').trim())issues.push('name_required'); if(!/^[^\\\\s@]+@[^\\\\s@]+\\\\.[^\\\\s@]+$/.test(email))issues.push('valid_email_required'); if(!String(x.service??'').trim())issues.push('service_required'); return [{json:{lead:{name:String(x.name??'').trim(),email,phone:String(x.phone??'').trim(),service:String(x.service??'').trim(),postcode:String(x.postcode??'').trim().toUpperCase(),description:String(x.description??'').trim(),source:String(x.source??'website')},valid:issues.length===0,issues,approval_token:String(x.approval_token??'')}}];"
+      },
+      "id": "adv1_2",
+      "name": "Validate Lead Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "adv1_3",
+      "name": "Valid Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.HUBSPOT_PRIVATE_APP_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({properties:{email:$json.lead.email,firstname:$json.lead.name,phone:$json.lead.phone,company:'',hs_lead_status:'NEW',description:$json.lead.description}}) }}",
+        "options": {}
+      },
+      "id": "adv1_4",
+      "name": "HubSpot — Create/Update Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const lead=$('Validate Lead Payload').first().json.lead; return [{json:{lead,hubspot_result:$json,logged_at:new Date().toISOString(),status:'crm_contact_created_or_existing'}}];"
+      },
+      "id": "adv1_5",
+      "name": "Build CRM Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_LEAD_WEBHOOK_URL }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({text:'New trade lead: '+$json.lead.name+' | '+$json.lead.service+' | '+$json.lead.postcode+' | '+$json.lead.email}) }}",
+        "options": {}
+      },
+      "id": "adv1_6",
+      "name": "Slack — Notify Sales",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const lead=$('Build CRM Result').first().json.lead; return [{json:{values:[[new Date().toISOString(),lead.name,lead.email,lead.service,lead.postcode,lead.source,'HubSpot+Slack']]}}];"
+      },
+      "id": "adv1_7",
+      "name": "Build Audit Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{$env.GOOGLE_SHEET_ID}}/values/Leads!A:G:append?valueInputOption=USER_ENTERED",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.GOOGLE_ACCESS_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({values:$json.values}) }}",
+        "options": {}
+      },
+      "id": "adv1_8",
+      "name": "Google Sheets — Append Lead Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {ok:true,status:'processed',lead_email:$('Validate Lead Payload').first().json.lead.email} }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "adv1_9",
+      "name": "Respond — Lead Processed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2160,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {ok:false,status:'rejected',issues:$('Validate Lead Payload').first().json.issues} }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "adv1_10",
+      "name": "Respond — Validation Failed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook — New Lead": {
+      "main": [
+        [
+          {
+            "node": "Validate Lead Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Lead Payload": {
+      "main": [
+        [
+          {
+            "node": "Valid Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid Lead?": {
+      "main": [
+        [
+          {
+            "node": "HubSpot — Create/Update Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond — Validation Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot — Create/Update Contact": {
+      "main": [
+        [
+          {
+            "node": "Build CRM Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build CRM Result": {
+      "main": [
+        [
+          {
+            "node": "Slack — Notify Sales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack — Notify Sales": {
+      "main": [
+        [
+          {
+            "node": "Build Audit Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Audit Row": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets — Append Lead Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets — Append Lead Log": {
+      "main": [
+        [
+          {
+            "node": "Respond — Lead Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/London"
+  },
+  "active": false
+}
