@@ -1,0 +1,81 @@
+{
+  "name": "Completed Job to Marketing Draft (Demo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio/job-to-content",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c1",
+      "name": "Receive completed job",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "demo-job-to-content"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input=$json.body??$json;\nconst business=String(input.business_name??'Your business').trim();\nconst service=String(input.service??'completed project').trim();\nconst location=String(input.location??'').trim();\nconst details=String(input.work_summary??'').trim();\nconst hasPermission=input.media_permission===true;\nconst caption=[`${business} has completed a ${service}${location?` in ${location}`:''}.`,details, 'Thinking about a similar project? Get in touch to discuss your requirements.'].filter(Boolean).join('\\\\n\\\\n');\nreturn [{json:{content_draft:{channel_variants:{facebook:caption,instagram:caption,linkedin:`Project update: ${caption}`},hashtags:['#UKTrades','#HomeImprovement'],portfolio_summary:`${service}${location?` — ${location}`:''}: ${details}`},media_handling:{photos_provided:Array.isArray(input.photo_urls)?input.photo_urls.length:0,permission_confirmed:hasPermission,allowed_for_publication:hasPermission},approval:{status:'awaiting_human_approval',required_checks:['Check factual claims and customer details','Confirm permission for every property/customer image','Check address and personal data are not exposed','Review platform-specific copy'],publish_automatically:false},note:'This workflow creates drafts only. Connect an approved publishing integration only after consent, account permissions and human approval are implemented.'}}];"
+      },
+      "id": "c1b",
+      "name": "Create content drafts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "c1c",
+      "name": "Return approval package",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Receive completed job": {
+      "main": [
+        [
+          {
+            "node": "Create content drafts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create content drafts": {
+      "main": [
+        [
+          {
+            "node": "Return approval package",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/London"
+  },
+  "active": false
+}
