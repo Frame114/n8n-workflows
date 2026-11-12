@@ -1,0 +1,81 @@
+{
+  "name": "Appointment Request Validation (Demo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio/appointment-request",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "demo21",
+      "name": "Receive request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "demo2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const x=$json.body??$json; const date=String(x.date??''); const time=String(x.time??''); const issues=[]; if(!String(x.name??'').trim())issues.push('name_required'); if(!String(x.email??'').includes('@'))issues.push('valid_email_required'); if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))issues.push('date_must_be_YYYY_MM_DD'); if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(time))issues.push('time_must_be_HH_MM'); if(!String(x.postcode??'').trim())issues.push('postcode_required'); return [{json:{request:{name:String(x.name??'').trim(),email:String(x.email??'').trim().toLowerCase(),postcode:String(x.postcode??'').trim().toUpperCase(),date,time,service:String(x.service??'')},valid:issues.length===0,issues,booking_status:'request_only_not_booked',human_confirmation_required:true,timezone:'Europe/London'}}];"
+      },
+      "id": "demo22",
+      "name": "Process and validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "demo23",
+      "name": "Return review payload",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Receive request": {
+      "main": [
+        [
+          {
+            "node": "Process and validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process and validate": {
+      "main": [
+        [
+          {
+            "node": "Return review payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/London"
+  },
+  "active": false
+}
