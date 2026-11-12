@@ -21,6 +21,23 @@ A public, sanitised collection of practical n8n workflow demonstrations and engi
 | [Customer support ticket triage](workflows/support-ticket-triage-demo.json) | Categorisation, priority and security escalation routing | JSON syntax checked; n8n runtime pending |
 | [Order status customer update](workflows/order-status-update-demo.json) | Approved-status-to-message drafting with a send approval gate | JSON syntax checked; n8n runtime pending |
 
+
+## Advanced API-integrated workflows
+
+Five advanced ten-node workflows have been added for employers to inspect. They require external provider accounts and API credentials; all exports are inactive by default.
+
+| Workflow | Integrations | What it demonstrates |
+|---|---|---|
+| [Lead intake](workflows/advanced-lead-intake-hubspot-slack-sheets.json) | HubSpot, Slack, Google Sheets | CRM upsert, validation, alerting and audit logging |
+| [AI support triage](workflows/advanced-ai-support-zendesk-slack.json) | OpenAI, Zendesk, Slack | AI classification, schema validation, ticket creation and escalation |
+| [Supplier price monitor](workflows/advanced-supplier-price-monitor-sheets-slack.json) | Supplier API, Google Sheets, Slack | Catalogue normalisation, baseline comparison and price alerts |
+| [AI social content pipeline](workflows/advanced-ai-social-content-approval-buffer.json) | OpenAI, Google Sheets, Slack, Buffer | Content generation, draft queue and explicit publishing approval |
+| [Payment reconciliation](workflows/advanced-stripe-payment-reconciliation-sheets-slack.json) | Stripe, Google Sheets, Slack | Payment retrieval, event logging and exception notification |
+
+See [advanced workflow setup](docs/ADVANCED_API_WORKFLOWS.md) for required credentials, environment variables, API assumptions and production safeguards. See [advanced workflow tests](tests/ADVANCED_API_WORKFLOW_TESTS.md) for test scenarios.
+
+**Portfolio status:** 15 workflows total — ten introductory examples and five advanced API-integrated examples. The five advanced exports each contain exactly ten nodes. JSON and graph structure have been checked; live provider integration tests are pending. Never add API secrets to this public repository.
+
 ## Portfolio and private application work
 
 The [portfolio page](portfolio/README.md) explains the engineering skills demonstrated here and provides high-level, non-confidential case studies of private application work, including AgentBridge and HueSchool. **Their source code is not published in this repository.** The case studies are intentionally limited to product scope and engineering challenges; implementation status is labelled honestly.
