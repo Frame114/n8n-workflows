@@ -1,0 +1,81 @@
+{
+  "name": "Trade Job Brief to Estimate Checklist (Demo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio/estimate-checklist",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b1",
+      "name": "Receive job brief",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "demo-estimate-checklist"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json.body ?? $json;\nconst text = [input.description, input.voice_note].filter(Boolean).join(' ').trim();\nconst measurements = input.measurements && typeof input.measurements === 'object' ? input.measurements : {};\nconst requiredMeasurements = ['length_m', 'height_m'];\nconst missingMeasurements = requiredMeasurements.filter((key) => !(Number(measurements[key]) > 0));\nconst questions = [];\nif (!input.postcode) questions.push('What is the job postcode?');\nif (!input.access_notes) questions.push('Are there access restrictions, steps or parking limits?');\nif (missingMeasurements.length) questions.push('Please confirm the required dimensions: ' + missingMeasurements.join(', '));\nif (!text) questions.push('Please add a job description or voice-note transcript.');\nreturn [{json:{job_brief:{description:text,postcode:String(input.postcode ?? '').toUpperCase(),photos_received:Array.isArray(input.photo_urls)?input.photo_urls.length:0},estimate_draft:{status:'draft_only',scope_summary:text || 'Not supplied',measurement_values:measurements,measurement_provenance:Object.keys(measurements).map(key=>({field:key,source:'customer_or_contractor_supplied',verified:false})),materials:[],labour:[],assumptions:[],exclusions:[]},missing_information:questions,ready_for_pricing:questions.length===0,approval_gate:'Contractor must verify site conditions, dimensions, quantities, product selection, labour and all prices. No quote is generated or sent by this demo.'}}];"
+      },
+      "id": "b2",
+      "name": "Build estimate checklist",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "b3",
+      "name": "Return draft checklist",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Receive job brief": {
+      "main": [
+        [
+          {
+            "node": "Build estimate checklist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build estimate checklist": {
+      "main": [
+        [
+          {
+            "node": "Return draft checklist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/London"
+  },
+  "active": false
+}
