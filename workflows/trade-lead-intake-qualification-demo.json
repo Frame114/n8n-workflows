@@ -1,0 +1,81 @@
+{
+  "name": "Trade Lead Intake and Qualification (Demo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio/trade-lead-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1",
+      "name": "Receive lead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "demo-trade-lead-intake"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\nconst required = ['name', 'email', 'service', 'description'];\nconst missing = required.filter((key) => !String(body[key] ?? '').trim());\nconst email = String(body.email ?? '').trim().toLowerCase();\nconst emailLooksValid = /^[^\\\\s@]+@[^\\\\s@]+\\\\.[^\\\\s@]+$/.test(email);\nconst priority = /urgent|emergency|leak|unsafe|today/i.test(String(body.description ?? '')) ? 'high' : 'normal';\nreturn [{ json: { accepted: missing.length === 0 && emailLooksValid, status: missing.length === 0 && emailLooksValid ? 'ready_for_human_review' : 'needs_correction', lead: { name: String(body.name ?? '').trim(), email, phone: String(body.phone ?? '').trim(), service: String(body.service ?? '').trim(), postcode: String(body.postcode ?? '').trim().toUpperCase(), description: String(body.description ?? '').trim(), priority }, validation: { missing_fields: missing, email_valid: emailLooksValid }, automation_policy: 'Draft and route only. Do not send customer messages or create quotes without contractor approval.' } }];"
+      },
+      "id": "a2",
+      "name": "Validate and qualify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a3",
+      "name": "Return lead review payload",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Receive lead": {
+      "main": [
+        [
+          {
+            "node": "Validate and qualify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate and qualify": {
+      "main": [
+        [
+          {
+            "node": "Return lead review payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/London"
+  },
+  "active": false
+}
