@@ -14,6 +14,12 @@ A public, sanitised collection of practical n8n workflow demonstrations and engi
 | [Trade lead intake and qualification](workflows/trade-lead-intake-qualification-demo.json) | Webhook intake, validation, normalisation, priority tagging and human review | JSON syntax checked; n8n import/runtime tests pending |
 | [Trade job brief to estimate checklist](workflows/trade-job-brief-estimate-checklist-demo.json) | Job capture, missing-information detection and measurement provenance | JSON syntax checked; n8n import/runtime tests pending |
 | [Completed job to marketing draft](workflows/completed-job-to-marketing-draft-demo.json) | Job-to-content repurposing, channel variants and media permission gate | JSON syntax checked; n8n import/runtime tests pending |
+| [Customer feedback and review eligibility](workflows/customer-feedback-review-demo.json) | Consent-aware review request eligibility and human approval | JSON syntax checked; n8n runtime pending |
+| [Appointment request validation](workflows/appointment-request-demo.json) | Validates appointment requests without falsely confirming availability | JSON syntax checked; n8n runtime pending |
+| [Invoice payment follow-up triage](workflows/invoice-followup-demo.json) | Invoice ageing and reminder/escalation recommendations | JSON syntax checked; n8n runtime pending |
+| [Supplier price list normalisation](workflows/supplier-price-normalise-demo.json) | SKU, unit, price and duplicate validation for supplier imports | JSON syntax checked; n8n runtime pending |
+| [Customer support ticket triage](workflows/support-ticket-triage-demo.json) | Categorisation, priority and security escalation routing | JSON syntax checked; n8n runtime pending |
+| [Order status customer update](workflows/order-status-update-demo.json) | Approved-status-to-message drafting with a send approval gate | JSON syntax checked; n8n runtime pending |
 
 ## Portfolio and private application work
 
@@ -58,7 +64,7 @@ See the existing workflow notes in this README and the exported file `workflows/
 
 ## Demo workflow setup
 
-The three portfolio demos use Webhook, Code and Respond to Webhook nodes and require no external credentials.
+The nine portfolio demos use Webhook, Code and Respond to Webhook nodes and require no external credentials. Together with the original LinkedIn workflow, the repository now contains ten workflow examples.
 
 1. Import the JSON export into a disposable n8n instance.
 2. Keep it inactive and use the Test URL while listening for a test event.
