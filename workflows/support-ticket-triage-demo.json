@@ -1,0 +1,81 @@
+{
+  "name": "Customer Support Ticket Triage (Demo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio/support-ticket-triage",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "demo51",
+      "name": "Receive request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "demo5"
+    },
+    {
+      "parameters": {
+        "jsCode": "const x=$json.body??$json; const subject=String(x.subject??'').trim();const body=String(x.message??'').trim();const t=(subject+' '+body).toLowerCase();let category='general',priority='normal';if(/refund|invoice|payment/.test(t))category='billing';else if(/login|password|access/.test(t))category='account_access';else if(/bug|error|crash|broken/.test(t))category='technical_issue';if(/data breach|account hacked|security incident/.test(t)){category='security_incident';priority='critical';}else if(/urgent|service down|blocked/.test(t))priority='high';return [{json:{ticket_reference:String(x.ticket_reference??'not_assigned'),subject,summary:(body||subject).slice(0,500),category,priority,queue:category==='security_incident'?'security_and_privacy':category==='technical_issue'?'technical_support':category==='billing'?'billing_support':'general_support',reply_draft:null,reply_sent:false,human_review_required:true}}];"
+      },
+      "id": "demo52",
+      "name": "Process and validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "demo53",
+      "name": "Return review payload",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Receive request": {
+      "main": [
+        [
+          {
+            "node": "Process and validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process and validate": {
+      "main": [
+        [
+          {
+            "node": "Return review payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/London"
+  },
+  "active": false
+}
