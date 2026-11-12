@@ -1,0 +1,315 @@
+{
+  "name": "Advanced Payment Reconciliation — Stripe + Google Sheets + Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio/advanced-stripe-reconcile",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "adv5_1",
+      "name": "Webhook — Stripe Event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const e=$json.body??$json; const data=e.data?.object??{}; return [{json:{event_id:String(e.id??''),event_type:String(e.type??''),object_id:String(data.id??''),payment_intent:String(data.payment_intent??''),amount:Number(data.amount??0),currency:String(data.currency??'').toUpperCase(),status:String(data.status??''),created:Number(e.created??0),livemode:e.livemode===true}}];"
+      },
+      "id": "adv5_2",
+      "name": "Extract Stripe Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ ['payment_intent.succeeded','payment_intent.payment_failed','charge.dispute.created'].includes($json.event_type) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "adv5_3",
+      "name": "Supported Event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.stripe.com/v1/payment_intents/{{$json.object_id}}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.STRIPE_SECRET_KEY}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adv5_4",
+      "name": "Stripe — Retrieve Payment Object",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const event=$('Extract Stripe Event').first().json; const payment=$json; const amount=Number(payment.amount??event.amount); return [{json:{event_id:event.event_id,event_type:event.event_type,payment_id:String(payment.id??event.object_id),customer_id:String(payment.customer??''),amount_minor_units:Number.isFinite(amount)?amount:null,currency:String(payment.currency??event.currency).toUpperCase(),payment_status:String(payment.status??event.status),event_created_at:event.created?new Date(event.created*1000).toISOString():null,livemode:event.livemode===true}}];"
+      },
+      "id": "adv5_5",
+      "name": "Normalise Reconciliation Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{$env.GOOGLE_SHEET_ID}}/values/PaymentEvents!A:I:append?valueInputOption=USER_ENTERED",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.GOOGLE_ACCESS_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({values:[[$json.event_id,$json.event_type,$json.payment_id,$json.customer_id,$json.amount_minor_units,$json.currency,$json.payment_status,$json.event_created_at,$json.livemode]]}) }}",
+        "options": {}
+      },
+      "id": "adv5_6",
+      "name": "Google Sheets — Append Ledger Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Normalise Reconciliation Row').first().json; return [{json:{...p,requires_attention:p.event_type!=='payment_intent.succeeded'||p.payment_status!=='succeeded'}}];"
+      },
+      "id": "adv5_7",
+      "name": "Prepare Exception Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_FINANCE_WEBHOOK_URL }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({text:'Payment exception: '+$json.event_type+' | '+$json.payment_id+' | '+$json.amount_minor_units+' '+$json.currency+' minor units | status '+$json.payment_status}) }}",
+        "options": {}
+      },
+      "id": "adv5_8",
+      "name": "Slack — Notify Finance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {ok:true,event_id:$('Normalise Reconciliation Row').first().json.event_id,logged:true} }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "adv5_9",
+      "name": "Respond — Reconciliation Logged",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1980,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {ok:true,ignored:true,reason:'unsupported_event_type'} }}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "id": "adv5_10",
+      "name": "Respond — Event Ignored",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook — Stripe Event": {
+      "main": [
+        [
+          {
+            "node": "Extract Stripe Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Stripe Event": {
+      "main": [
+        [
+          {
+            "node": "Supported Event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supported Event?": {
+      "main": [
+        [
+          {
+            "node": "Stripe — Retrieve Payment Object",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond — Event Ignored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stripe — Retrieve Payment Object": {
+      "main": [
+        [
+          {
+            "node": "Normalise Reconciliation Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise Reconciliation Row": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets — Append Ledger Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets — Append Ledger Event": {
+      "main": [
+        [
+          {
+            "node": "Prepare Exception Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Exception Alert": {
+      "main": [
+        [
+          {
+            "node": "Slack — Notify Finance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack — Notify Finance": {
+      "main": [
+        [
+          {
+            "node": "Respond — Reconciliation Logged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/London"
+  },
+  "active": false
+}
