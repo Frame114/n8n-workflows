@@ -1,0 +1,81 @@
+{
+  "name": "Supplier Price List Normalisation (Demo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio/supplier-price-normalise",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "demo41",
+      "name": "Receive request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "demo4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const x=$json.body??$json; const rows=Array.isArray(x.rows)?x.rows:[]; const seen=new Set(); const duplicates=new Set(); for(const r of rows){const sku=String(r.sku??r.product_code??'').trim();if(sku&&seen.has(sku))duplicates.add(sku);if(sku)seen.add(sku);} const items=rows.map((r,i)=>{const sku=String(r.sku??r.product_code??'').trim();const price=Number(r.unit_price??r.price);const issues=[];if(!sku)issues.push('missing_sku');if(!String(r.description??'').trim())issues.push('missing_description');if(!String(r.unit??'').trim())issues.push('missing_unit');if(!Number.isFinite(price)||price<0)issues.push('invalid_price');if(duplicates.has(sku))issues.push('duplicate_sku');return {row:i+1,sku,description:String(r.description??'').trim(),unit:String(r.unit??'').trim(),price:Number.isFinite(price)?price:null,currency:String(r.currency??'GBP'),vat_basis:String(r.vat_basis??'unknown'),issues,accepted:issues.length===0};});return [{json:{supplier:String(x.supplier??'unspecified'),summary:{received:rows.length,accepted:items.filter(i=>i.accepted).length,rejected:items.filter(i=>!i.accepted).length},items,import_to_live_price_book:false,human_review_required:true,source_prices_must_be_verified:true}}];"
+      },
+      "id": "demo42",
+      "name": "Process and validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "demo43",
+      "name": "Return review payload",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Receive request": {
+      "main": [
+        [
+          {
+            "node": "Process and validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process and validate": {
+      "main": [
+        [
+          {
+            "node": "Return review payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/London"
+  },
+  "active": false
+}
